@@ -20,32 +20,32 @@ function error(target: number[], output: number[]) {
             return Math.pow(acc - output[i], 2);
         }
 
-        return acc + Math.pow(curr - output[i], 2)
+        return acc + Math.pow(curr - output[i], 2);
     });
 }
 
 class Neuron {
     weights: number[];
-    value: number;
+    output: number;
     inputs: number[];
 
     activate(inputs: number[], bias: number) {
         // For the backpropagation
         this.inputs = inputs;
 
-        this.value = inputs.reduce((acc, curr, i) => {
+        return inputs.reduce((acc, curr, i) => {
             if (i == 0) {
                 return acc * this.weights[i];
             }
 
             return acc + curr * this.weights[i]
         }) + bias;
-
-        return this.value;
     }
 
     transfer(inputs: number[], bias: number) {
-        return sigmoid(this.activate(inputs, bias));
+        this.output = sigmoid(this.activate(inputs, bias));
+
+        return this.output;
     }
 }
 
@@ -134,7 +134,7 @@ class Network {
             let example = trainingExamples[trainingExampleIndex];
             let target = trainingTargets[trainingExampleIndex];
 
-            let pred = this.predict(example);
+            let pred: number[] = this.predict(example);
 
             let outputErrorTerm = pred.map((pred, i) => (
                 pred * (1 - pred) * (target[i] - pred)
@@ -162,7 +162,7 @@ class Network {
                         return acc + curr * errorTermsForLayers[errorTermsForLayers.length - 1][j];
                     });
 
-                    return neuron.value * (1 - neuron.value) * sumOfDownstreamWeightsAndErrorTerms;
+                    return neuron.output * (1 - neuron.output) * sumOfDownstreamWeightsAndErrorTerms;
                 }));
             }
 
@@ -182,26 +182,12 @@ class Network {
 
 let network: Network = new Network([2, 1], .05);
 
-// Generate training data
-
-let input1 = Array.apply(null, new Array(25000)).map(() => ([0, 0]));
-let input2 = Array.apply(null, new Array(25000)).map(() => ([0, 1]));
-let input3 = Array.apply(null, new Array(25000)).map(() => ([1, 0]));
-let input4 = Array.apply(null, new Array(25000)).map(() => ([1, 1]));
-
-let input = input1.concat(input2).concat(input3).concat(input4);
-
-let output1 = Array.apply(null, new Array(25000)).map(() => ([0]));
-let output2 = Array.apply(null, new Array(25000)).map(() => ([1]));
-let output3 = Array.apply(null, new Array(25000)).map(() => ([1]));
-let output4 = Array.apply(null, new Array(25000)).map(() => ([1]));
-
-let output = output1.concat(output2).concat(output3).concat(output4);
-
 // Finish generating training data
 
-network.train(input, output);
+let input = Array.apply(null, new Array(50000)).map(() => ([Math.round(Math.random()), Math.round(Math.random())]));
+let output = input.map((i: number[]) => ([Number(i[0] == 1 || i[1] == 1)]));
 
+network.train(input, output);
 console.log(network.layers[network.layers.length - 1].neurons[0].weights)
 
 console.log(network.predict([0, 0]));

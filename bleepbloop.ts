@@ -5,13 +5,29 @@ Fredrik August Madsen-Malmo
 bleepbloop.ts -- main file that binds the library together
 */
 
+/*
+
+MOHAHAH
+I solved it!
+JS reduce will set the i=1 on the first iteration as it works like a functional fold.
+It takes the two first values, and mashes them together.
+Therefor I have to write it like this
+
+...
+if (i == 1) {
+  return acc * w[i-1] + curr * w[i]
+}
+...
+
+*/
+
 // Helper functions
 function randomWeight(): number {
     return Math.random() * .2;
 }
 
 function sigmoid(input: number): number {
-    return 1 / (1 + Math.pow(Math.E, input));
+    return 1 / (1 + Math.pow(Math.E, -1 * input));
 }
 
 function error(target: number[], output: number[]) {
@@ -38,7 +54,7 @@ class Neuron {
                 return acc * this.weights[i];
             }
 
-            return acc + curr * this.weights[i]
+            return acc + (curr * this.weights[i]);
         }) + bias;
     }
 
@@ -180,12 +196,12 @@ class Network {
     }
 }
 
-let network: Network = new Network([2, 1], .05);
+let network: Network = new Network([2, 1], .2);
 
 // Finish generating training data
 
-let input = Array.apply(null, new Array(50000)).map(() => ([Math.round(Math.random()), Math.round(Math.random())]));
-let output = input.map((i: number[]) => ([Number(i[0] == 1 || i[1] == 1)]));
+let input = Array.apply(null, new Array(1000)).map(() => ([Math.round(Math.random()), Math.round(Math.random())]));
+let output = input.map((i: number[]) => ([Number((i[0] == 1 || i[1] == 1))]));
 
 network.train(input, output);
 console.log(network.layers[network.layers.length - 1].neurons[0].weights)

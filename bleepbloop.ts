@@ -7,37 +7,28 @@ bleepbloop.ts -- main file that binds the library together
 
 /*
 
-MOHAHAH
-I solved it!
-JS reduce will set the i=1 on the first iteration as it works like a functional fold.
-It takes the two first values, and mashes them together.
-Therefor I have to write it like this
-
-...
-if (i == 1) {
-  return acc * w[i-1] + curr * w[i]
-}
-...
+Reduce doesn’t work if the array that is being iteratied over only contains
+one element.
 
 */
 
 // Helper functions
 function randomWeight(): number {
-    return Math.random() * .2;
+    return Math.random() * .2 - .1;
 }
 
 function sigmoid(input: number): number {
     return 1 / (1 + Math.pow(Math.E, -1 * input));
 }
 
-function error(target: number[], output: number[]): number {
-    return .5 * target.reduce((acc, curr, i) => {
+function sumOfSquaredError(target: number[], pred: number[]): number {
+    return target.reduce((acc, curr, i) => {
         if (i == 1) {
-            return Math.pow(acc - output[i - 1], 2) + Math.pow(curr - output[i], 2);
+            return Math.pow(acc - pred[i - 1], 2) + Math.pow(curr - pred[i], 2);
         }
 
-        return acc + Math.pow(curr - output[i], 2);
-    });
+        return acc + Math.pow(curr - pred[i], 2);
+    })
 }
 
 class Neuron {
@@ -134,7 +125,7 @@ class Network {
         return prevLayerOutputs;
     }
 
-    train(trainingExamples: [number[]], trainingTargets: [number[]]) {
+    train(trainingExamples: [number[]], trainingTargets: [number[]], iterations: number, errorStopValue: number, minimumEpochs: number = 0) {
         // Using backpropagation
         if (trainingExamples[0].length != this.layers[0].neurons.length) {
             console.error('Input length must be the same as number of input neurons!');
@@ -151,14 +142,15 @@ class Network {
             return;
         }
 
-        for (let trainingExampleIndexStr in trainingExamples) {
-            let trainingExampleIndex: number = Number(trainingExampleIndexStr);
+        for (let epoch = 0; epoch < iterations; epoch++) {
+            let trainingIndex: number = Math.floor(Math.random() * trainingExamples.length);
 
             // Extract an example(inputs) and a target
-            let example = trainingExamples[trainingExampleIndex];
-            let target = trainingTargets[trainingExampleIndex];
+            let example = trainingExamples[trainingIndex];
+            let target = trainingTargets[trainingIndex];
 
             let pred: number[] = this.predict(example);
+
 
             let outputErrorTerm = pred.map((pred, i) => (
                 pred * (1 - pred) * (target[i] - pred)
@@ -215,6 +207,13 @@ class Network {
                     });
                 });
             }
+
+            // epochSumOfSquaredError
+            let epochSSE = sumOfSquaredError(target, pred)
+            if (epochSSE <= errorStopValue && epoch >= minimumEpochs) {
+                console.info("Neural network done training, epoch: " + epoch + "\nSSE=" + epochSSE);
+                break;
+            }
         }
     }
 }
@@ -228,7 +227,7 @@ let network: Network = new Network([2, 1], .25);
 let input: [number[]] = [[0, 0], [0, 1], [1, 0], [1, 1]];
 let output: [number[]] = [[0], [1], [1], [1]];
 
-network.train(input, output);
+network.train(input, output, 10000, 0.01, 500);
 
 console.log(network.predict([0, 0]));
 console.log(network.predict([1, 0]));

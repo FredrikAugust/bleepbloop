@@ -77,7 +77,7 @@ class Layer {
 class Network {
     layers: Layer[];
 
-    constructor(layerLenghts: number[], public learningRate: number) {
+    constructor(layerLenghts: number[]) {
         // Instanciate layerLenghts.length layers and save them in this.neurons
         this.layers = layerLenghts.map((layerLength, i) => {
             return new Layer(layerLenghts[i]);
@@ -133,7 +133,7 @@ class Network {
         return prevLayerOutputs;
     }
 
-    train(trainingExamples: [number[]], trainingTargets: [number[]], iterations: number, errorStopValue: number, minimumEpochs: number = 0) {
+    train(trainingExamples: [number[]], trainingTargets: [number[]], iterations: number, errorStopValue: number, minimumEpochs: number = 0, learningRate: number = .25) {
         // Using backpropagation
         if (trainingExamples[0].length != this.layers[0].neurons.length) {
             console.error('Input length must be the same as number of input neurons!');
@@ -150,15 +150,17 @@ class Network {
             return;
         }
 
+        let trainingIndex: number = 0;
+        let SSE = 0;
+
         for (let epoch = 0; epoch < iterations; epoch++) {
-            let trainingIndex: number = Math.floor(Math.random() * trainingExamples.length);
+            trainingIndex = trainingIndex + 1 == trainingExamples.length ? 0 : trainingIndex + 1;
 
             // Extract an example(inputs) and a target
             let example = trainingExamples[trainingIndex];
             let target = trainingTargets[trainingIndex];
 
             let pred: number[] = this.predict(example);
-
 
             let outputErrorTerm = pred.map((pred, i) => (
                 pred * (1 - pred) * (target[i] - pred)
@@ -176,19 +178,29 @@ class Network {
                     // These are the neurons who take the output from this neuron as input (directly)
                     let downstreamNeurons: Neuron[] = this.layers[layerIndex + 1].neurons;
 
-                    let sumOfDownstreamWeightsAndErrorTerms: number =
-                        // First, isolate the weights as we can’t reduce Neuron[] with number as acc
-                        downstreamNeurons.map((neuron, j) => (
-                            neuron.weights[j]
-                            // Issue #5
-                        )).reduce((acc, curr, j) => {
-                            if (j == 1) {
-                                return acc * errorTermsForLayers[errorTermsForLayers.length - 1][j - 1] +
-                                    curr * errorTermsForLayers[errorTermsForLayers.length - 1][j];
-                            }
+                    let downstreamNeuronWeights: number[] = downstreamNeurons.map((neuron, j): number => (
+                        neuron.weights[j]
+                    ));
 
-                            return acc + curr * errorTermsForLayers[errorTermsForLayers.length - 1][j];
-                        });
+                    let sumOfDownstreamWeightsAndErrorTerms: number = 0;
+
+                    if (downstreamNeuronWeights.length == 1) {
+                        sumOfDownstreamWeightsAndErrorTerms = errorTermsForLayers[errorTermsForLayers.length - 1][0] * downstreamNeuronWeights[0];
+                    } else {
+                        sumOfDownstreamWeightsAndErrorTerms =
+                            // First, isolate the weights as we can’t reduce Neuron[] with number as acc
+                            downstreamNeurons.map((neuron, j) => (
+                                neuron.weights[j]
+                                // Issue #5
+                            )).reduce((acc, curr, j) => {
+                                if (j == 1) {
+                                    return acc * errorTermsForLayers[errorTermsForLayers.length - 1][j - 1] +
+                                        curr * errorTermsForLayers[errorTermsForLayers.length - 1][j];
+                                }
+
+                                return acc + curr * errorTermsForLayers[errorTermsForLayers.length - 1][j];
+                            });
+                    }
 
                     // Derivation of the sigmoid function
                     return neuron.output * (1 - neuron.output) * sumOfDownstreamWeightsAndErrorTerms;
@@ -206,37 +218,46 @@ class Network {
                         // Update bias for layer. This is the same as weight update rule, except the
                         // input weight is 1 in the calculation, as bias is directly passed in
                         this.layers[layerIndex + 1].bias +=
-                            this.learningRate * 1 * errorTermsForLayers[layerIndex][i];
+                            learningRate * 1 * errorTermsForLayers[layerIndex][i];
 
                         // Update neuron weight based on the error term for the layer times
                         // the input value
                         return neuronWeight +
-                            (this.learningRate * errorTermsForLayers[layerIndex][i]
+                            (learningRate * errorTermsForLayers[layerIndex][i]
                                 * neuron.inputs[j])
                     });
                 });
             }
 
-            // epochSumOfSquaredError
-            let epochSSE = sumOfSquaredError(target, pred)
-            if (epochSSE <= errorStopValue && epoch >= minimumEpochs) {
-                console.info("Neural network done training, epoch: " + epoch + "\nSSE=" + epochSSE);
-                break;
+            // Reset if we’re starting from the first example again
+            if (trainingIndex == 0) {
+                SSE = 0;
+            }
+
+            SSE += sumOfSquaredError(target, pred)
+            // Mean sum of squared errors
+            let MSSE: number = SSE / trainingExamples.length;
+
+            if (MSSE <= errorStopValue && epoch >= minimumEpochs) {
+                console.info("Neural network done training, epoch: " + epoch + "\nMSSE=" + MSSE);
+                return;
             }
         }
+
+        console.warn("Could not train network to hit error threshold after " + iterations + " iterations.");
     }
 }
 
 /* Testing the program */
 
-let network: Network = new Network([2, 1], .25);
+let network: Network = new Network([2, 1]);
 
 // Finish generating training data
 
-let input: [number[]] = [[0, 0], [0, 1], [1, 0], [1, 1]];
+let input: [number[]] = [[0, 0], [1, 0], [0, 1], [1, 1]];
 let output: [number[]] = [[0], [1], [1], [1]];
 
-network.train(input, output, 10000, 0.01, 500);
+network.train(input, output, 100000, 0.01, 500, 0.3);
 
 console.log(network.predict([0, 0]));
 console.log(network.predict([1, 0]));

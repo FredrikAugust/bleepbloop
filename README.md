@@ -8,6 +8,8 @@ For example, see bottom of main file. If you want to use the compiled JS instead
 
     tsc bleepbloop.ts
     
+To run this, enter `node bleepbloop.js`.
+
 ## Installation
 
 You should only need `typescript` to run this program.

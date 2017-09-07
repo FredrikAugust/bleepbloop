@@ -22,7 +22,10 @@ function sigmoid(input: number): number {
 }
 
 function sumOfSquaredError(target: number[], pred: number[]): number {
-    // Issue #5
+    if (target.length == 1) {
+        return Math.pow(target[0] - pred[0], 2);
+    }
+
     return target.reduce((acc, curr, i) => {
         if (i == 1) {
             return Math.pow(acc - pred[i - 1], 2) + Math.pow(curr - pred[i], 2);
@@ -42,7 +45,10 @@ class Neuron {
         this.inputs = inputs;
 
         // Calculate the net input (Sigma[inputs]w*x)+b
-        // Issue #5
+        if (inputs.length == 1) {
+            return inputs[0] * this.weights[0] + bias;
+        }
+
         return inputs.reduce((acc, curr, i) => {
             if (i == 1) {
                 return acc * this.weights[i - 1] + curr * this.weights[i];
